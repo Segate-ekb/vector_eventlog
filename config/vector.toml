@@ -1,0 +1,92 @@
+#vector.toml
+[sources.input_logs]
+  type = "file"
+  include = ['''/var/log/eventlog/**/*.lgp''']
+  data_dir =  '''/var/lib/vector'''
+  fingerprint.strategy = "device_and_inode"
+  multiline.timeout_ms = 1000
+  multiline.mode = "halt_before"
+  multiline.start_pattern = ''
+  multiline.condition_pattern = '\{\d{14},.+?,'
+
+[transforms.remap_logs]
+inputs = ["input_logs"]
+type = "remap"
+file="/etc/vector/transform.vrl"
+
+[transforms.filter_error] 
+  inputs = ["remap_logs"]
+  type = "filter"
+  condition = '.err != null'
+
+[transforms.filter_success] 
+  inputs = ["remap_logs"]
+  type = "filter"
+  condition = '.err == null'
+
+[transforms.preparation_data]
+  type = "lua"
+  version = "2"
+  inputs = ["filter_success"]
+  search_dirs = ["/etc/vector"]
+  source = "require 'transform'"
+  hooks.init = "init"
+  hooks.process = "process"
+  hooks.shutdown = "shutdown"
+  timers = [{interval_seconds = 1, handler = "timer_handler"}]
+
+[sinks.emit_log_sucsess]
+  type = "clickhouse"
+  inputs = ["preparation_data"]
+  endpoint = '''${CH_SERVER}'''
+  auth.strategy = "basic"
+  auth.user = '''${CH_USER}'''
+  auth.password = '''${CH_PASSWORD}'''
+  database = '''${CH_DATABASE}'''
+  table = '''${LOG_TABLE}'''
+  skip_unknown_fields = true
+  encoding.timestamp_format = "unix"
+  batch.max_events = 10000
+  batch.timeout_secs = 5
+  acknowledgements.enabled = true
+
+[sinks.emit_log_error]
+  type = "clickhouse"
+  inputs = ["filter_error"]
+  endpoint = '''${CH_SERVER}'''
+  auth.strategy = "basic"
+  auth.user = '''${CH_USER}'''
+  auth.password = '''${CH_PASSWORD}'''
+  database = '''${CH_DATABASE}'''
+  table = '''${ERROR_TABLE}'''
+  skip_unknown_fields = true
+  encoding.timestamp_format = "unix"
+  batch.max_events = 10000
+  batch.timeout_secs = 5
+  acknowledgements.enabled = true
+
+# ----------------------------------
+# Monitoring
+# ----------------------------------
+
+[sources.vector_metrics]
+  type = "internal_metrics"
+
+[sinks.vector_metrics_exporter]
+  type = "prometheus_exporter"
+  inputs = [ "vector_metrics" ]
+  address = '''0.0.0.0:9598'''
+  default_namespace = "service"
+
+[api]
+  enabled = true
+  address = '''0.0.0.0:8686'''
+
+# ----------------------------------
+# Debug
+# ----------------------------------
+# [sinks.emit_debug_logs] # секция настроек описывающая место назначения
+#   inputs = ["vector_logs"] # Входные данные, результат работы предыдущей секции
+#   type = "console" # Тип назначения (в консоль), документация: https://vector.dev/docs/reference/configuration/sinks/
+#   encoding.codec = "json" # формат вывода данных
+

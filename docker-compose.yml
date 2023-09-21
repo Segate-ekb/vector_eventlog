@@ -1,0 +1,79 @@
+version: '3.7'
+
+services:
+  clickhouse:
+    image: yandex/clickhouse-server
+    restart: always
+    hostname: clickhouse
+    ports:
+      - "8123:8123"
+      - "9001:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+    configs:
+      - source: users_config
+        target: /etc/clickhouse-server/users.xml  
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker
+
+  vector:
+    image: timberio/vector:latest-alpine
+    restart: always
+    hostname: vector
+    environment:
+      - CH_SERVER=clickhouse:8123
+      - CH_USER=agent
+      - CH_PASSWORD=9i7bwajodzrGN3JUQJf9
+      - CH_DATABASE=eventlog_storage
+      - LOG_TABLE=eventlog
+      - ERROR_TABLE=eventlog_error
+    volumes:
+      - vector_config:/etc/vector/
+      - vector_fileProgress:/var/lib/vector
+      - vector_logs:/var/log/logtj
+    ports:
+      - 8686:8686 
+      - 9598:9598     
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker
+
+configs:
+  users_config:
+    external: true
+
+volumes:
+    clickhouse_data:
+      driver: local
+      driver_opts:
+          type: nfs
+          o: addr=10.193.49.29,nolock,soft,rw
+          device: ":/mnt/volumes/eventlog/clickhouse/_data"     
+    clickhouse_logs:
+      driver: local
+      driver_opts:
+          type: nfs
+          o: addr=10.193.49.29,nolock,soft,rw
+          device: ":/mnt/volumes/eventlog/clickhouse/_logs"
+    vector_config:
+      driver: local
+      driver_opts:
+          type: nfs
+          o: addr=10.193.49.29,nolock,soft,rw
+          device: ":/mnt/volumes/eventlog/vector/_config"
+    vector_fileProgress:
+      driver: local
+      driver_opts:
+          type: nfs
+          o: addr=10.193.49.29,nolock,soft,rw
+          device: ":/mnt/volumes/eventlog/vector/_fileProgress"
+    vector_logs:
+      driver: local
+      driver_opts:   
+        type: cifs    
+        device: //dsc-1c8-app01/srvinfo_ERP25
+        o: "username=egor.ivanov,password=m3qWJmEv4XS4JoDjHTy7,domain=myway,vers=3.0,addr=dsc-1c8-app01,file_mode=0777,dir_mode=0777"
