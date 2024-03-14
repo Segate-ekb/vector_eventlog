@@ -42,7 +42,6 @@ transforms:
     type: "remap"
     file: "/etc/vector/add_base_info.vrl"
     drop_on_error: true
-    reroute_dropped: true
 
   remap_logs:
   # Основная трансформация
