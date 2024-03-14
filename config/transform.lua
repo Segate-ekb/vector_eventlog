@@ -29,7 +29,6 @@ function loadDictonary()
   if dictonaryFilePath == nil then
     dictonaryFilePath = getPath(fileProcessing).."1Cv8.lgf"
   end  
-  print("DICTONARY RELOAD: "..dictonaryFilePath)
 
   local file = io.open(dictonaryFilePath, "r")
     if not file then 

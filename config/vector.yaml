@@ -1,0 +1,144 @@
+data_dir: "/var/lib/vector"
+
+# api:
+#   enabled: true
+#   address: '''0.0.0.0:8686'''
+
+enrichment_tables:
+  BaseList:
+    type: "file"
+    file:
+    # Путь к файлу с данными соответствия базы и ее UUID
+      path: "/etc/vector/BaseList.csv"
+      encoding:
+        type: "csv" 
+    schema:
+      BaseUUID: "string"
+      ClickHouseBaseName: "string"    
+
+sources:
+  input_logs:
+    type: "file"
+    include:
+    # Если у вас несколько источников - добавьте их в массив
+      - "/var/log/eventlog/**/*.lgp"
+    fingerprint:
+      strategy: "device_and_inode"
+    remove_after_secs: 172800
+    multiline:
+      timeout_ms: 1000
+      mode: "halt_before"
+      start_pattern: ""
+      condition_pattern: '\{\d{14},.+?,'
+
+  vector_metrics:
+    type: "internal_metrics"    
+
+transforms:
+  # добавим инфо о базе для которой лог. 
+  add_base_info:
+    inputs:
+      - "input_logs"
+    type: "remap"
+    file: "/etc/vector/add_base_info.vrl"
+    drop_on_error: true
+    reroute_dropped: true
+
+  remap_logs:
+  # Основная трансформация
+    inputs:
+      - "add_base_info"
+    type: "remap"
+    file: "/etc/vector/transform.vrl"
+    drop_on_error: true
+    reroute_dropped: true
+
+  preparation_data:
+  # Обогащение данных, разыменование, приведение в читабельный вид
+    type: "lua"
+    inputs:
+      - "remap_logs"
+    version: "2"
+    search_dirs: 
+     - "/etc/vector"
+    source: "require 'transform'"
+    hooks:
+      init: "init"
+      process: "process"
+      shutdown: "shutdown"
+    timers:
+      - interval_seconds: 1
+        handler: "timer_handler"
+
+  prepare_errors:
+  # У нас ошибка, подготовим ее к помещению в отдельную таблицу.
+    inputs:
+      - "remap_logs.dropped"
+      - "add_base_info.dropped"
+    type: "remap"
+    file: "/etc/vector/prepare_error.vrl"
+    drop_on_error: true     
+
+sinks:
+   success_logs:
+     type: "clickhouse"
+     inputs:
+       - "preparation_data"
+     endpoint: "${CH_SERVER:-clickhouse:8123}"
+     auth:
+       strategy: "basic"
+       user: "${CH_USER:-default}"
+       password: "${CH_PASSWORD}"
+     database: "{{ ClickHouseBaseName }}"
+     table: "${LOG_TABLE:-eventlog}"
+     skip_unknown_fields: true
+     encoding:
+       timestamp_format: "unix"
+     batch:
+       max_events: 10000
+       timeout_secs: 5
+     acknowledgements:
+       enabled: true
+
+   error_log:
+     type: "clickhouse"
+     inputs:
+       - "prepare_errors"
+     endpoint: "${CH_SERVER:-clickhouse:8123}"
+     auth:
+       strategy: "basic"
+       user: "${CH_USER:-default}"
+       password: "${CH_PASSWORD}"
+     database: "{{ ClickHouseBaseName }}"
+     table: "${LOG_TABLE:-eventlog_error}"
+     skip_unknown_fields: true
+     encoding:
+       timestamp_format: "unix"
+     batch:
+       max_events: 10000
+       timeout_secs: 5
+     acknowledgements:
+       enabled: true
+
+  # vector_metrics_exporter:
+  #   type: "prometheus_exporter"
+  #   inputs:
+  #     - "vector_metrics"
+  #   address: '''0.0.0.0:9598'''
+  #   default_namespace: "service"
+
+  # log_to_json:
+  #   type: "file"
+  #   inputs:
+  #     - "preparation_data"
+  #   path: "/tmp/{{ ClickHouseBaseName }}-%Y-%m-%d.json"
+  #   encoding:
+  #     codec: "json"
+
+  # errors_to_json:
+  #   type: "file"
+  #   inputs:
+  #     - "prepare_errors"
+  #   path: "/tmp/dropped-%Y-%m-%d.json"
+  #   encoding:
+  #     codec: "json"

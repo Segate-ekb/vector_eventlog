@@ -1,0 +1,4 @@
+.metadata.dropped.error = .metadata.dropped.message
+del(.metadata.dropped.message)
+. = merge(., .metadata.dropped)
+del(.metadata)

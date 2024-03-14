@@ -1,5 +1,6 @@
 #transform.vrl
-structured, err = parse_regex(.message, r'\{(?P<DateTime>\d{14}),(?P<TransactionStatus>\w),\s+\{(?P<TransactionDate>.+?)\},(?P<User>\d+),(?P<Computer>\d+),(?P<Application>\d+),(?P<Connection>\d+),(?P<Event>\d+),(?P<Severity>\w),"(?P<Comment>[ЁёА-я0-9 \s\S\n\w]*?)",(?P<Metadata>\d+),\s+(?P<Data>.+?\}),"(?P<DataPresentation>.*?)",(?P<Server>\d+),(?P<MainPort>\d+),(?P<AddPort>\d+),(?P<Session>\d+)', numeric_groups: false)                                          
+structured = parse_regex!(.message, r'\{(?P<DateTime>\d{14}),(?P<TransactionStatus>\w),\s+\{(?P<TransactionDate>.+?)\},(?P<User>\d+),(?P<Computer>\d+),(?P<Application>\d+),(?P<Connection>\d+),(?P<Event>\d+),(?P<Severity>\w),"(?P<Comment>[ЁёА-я0-9 \s\S\n\w]*?)",(?P<Metadata>\d+),\s+(?P<Data>.+?\}),"(?P<DataPresentation>.*?)",(?P<Server>\d+),(?P<MainPort>\d+),(?P<AddPort>\d+),(?P<Session>\d+)', numeric_groups: false)
+
 . = merge(., structured)
-.DateTime, errEventTimestamp = parse_timestamp(structured.DateTime, "%Y%m%d%H%M%S")
-.err = err
+
+.DateTime = parse_timestamp!(structured.DateTime, "%Y%m%d%H%M%S")

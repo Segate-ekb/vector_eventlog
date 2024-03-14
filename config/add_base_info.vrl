@@ -1,0 +1,13 @@
+#transform.vrl
+CH_BASENAME, err = get_env_var("CH_BASE_NAME")
+
+if (err == null || CH_BASENAME != "") {
+	# У нас есть переменная окружения CH_BASE_NAME и она не пустая 
+	.ClickHouseBaseName = CH_BASENAME
+} else {
+	BaseUUID = parse_regex!(.file,r'(?P<BaseUUID>([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}))/1Cv8Log/\d*\.lgp', numeric_groups: false)
+
+    bases = get_enrichment_table_record!("BaseList",{"BaseUUID": BaseUUID.BaseUUID})
+    
+    . = merge(., bases)
+}
