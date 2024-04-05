@@ -1,0 +1,5 @@
+databases:
+  - 1c_baseName: "erp25"
+    ch_baseName: "erp25_ch"
+  - 1c_baseName: "erp26"
+    ch_baseName: "erp26_ch"  

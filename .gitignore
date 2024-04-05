@@ -2,3 +2,5 @@ logs/
 *.env
 docker-compose.yml
 out/
+config/BaseList.csv
+config/multiBaseConfig.yaml
