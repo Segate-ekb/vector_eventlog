@@ -24,7 +24,6 @@ sources:
 
     fingerprint:
       strategy: "device_and_inode"
-    remove_after_secs: 172800
     multiline:
       timeout_ms: 1000
       mode: "halt_before"

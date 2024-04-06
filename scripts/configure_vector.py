@@ -133,11 +133,22 @@ def create_vector_config(
         config = yaml.safe_load(file)
 
     # Проверяем, есть ли нужный раздел и ключ
-    if (
-        "sources" in config
-        and "input_logs" in config["sources"]
-        and "include" in config["sources"]["input_logs"]
-    ):
+    if "sources" in config and "input_logs" in config["sources"]:
+        add_log_sources(config, databases)
+        add_remove_after_secs(config)
+    else:
+        print("Ошибка в структуре шаблона конфигурации..❌")
+        exit(1)
+
+    # Сохраняем обновлённую конфигурацию в новый файл
+    with open(output_path, "w", encoding="utf-8") as file:
+        yaml.safe_dump(config, file, allow_unicode=True, default_flow_style=False)
+
+    print(f"Конфигурационный файл успешно обновлён и сохранён как {output_path}..✅")
+
+
+def add_log_sources(config, databases):
+    if "include" in config["sources"]["input_logs"]:
         # Формируем список путей к логам для каждой базы данных
         log_paths = []
         for db in databases:
@@ -151,11 +162,51 @@ def create_vector_config(
         print("Ошибка в структуре шаблона конфигурации..❌")
         exit(1)
 
-    # Сохраняем обновлённую конфигурацию в новый файл
-    with open(output_path, "w", encoding="utf-8") as file:
-        yaml.safe_dump(config, file, allow_unicode=True, default_flow_style=False)
+def add_remove_after_secs(config):
+    remove_after_secs = get_remove_after_secs()
+    if remove_after_secs:
+        config["sources"]["input_logs"]["remove_after_secs"] = remove_after_secs
+    else:
+        print("Не удалось добавить информацию об удалении файлов..❌")
+        exit(1)
 
-    print(f"Конфигурационный файл успешно обновлён и сохранён как {output_path}..✅")
+def parse_time_to_seconds(time_str):
+    # Соответствие между единицами времени и их значениями в секундах
+    time_units = {
+        "s": 1,  # секунда
+        "m": 60,  # минута
+        "h": 3600,  # час
+        "d": 86400,  # день
+    }
+
+    # Пытаемся разобрать строку с учетом указания единицы времени
+    match = re.match(r"(\d+)([smhd])?$", time_str)
+    if not match:
+        raise ValueError(f"Невозможно разобрать строку времени: {time_str}..❌")
+
+    value, unit = match.groups()
+    if unit is None:
+        # Если единица времени не указана, подразумеваем секунды
+        unit = "s"
+
+    secs = int(value) * time_units[unit]
+    print(f"Установлено удаление файлов старше {value}{unit} ({secs} секунд)..✅")
+    return secs
+
+
+
+def get_remove_after_secs():
+
+    remove_after_secs = None
+
+    time_str = os.getenv("DELETE_OLD_FILES_AFTER")
+    if time_str:
+        try:
+            remove_after_secs = parse_time_to_seconds(time_str)
+        except ValueError as e:
+            print(e)
+            exit(1)
+    return remove_after_secs
 
 
 def prepare_and_print_yaml(cluster_database_list):
