@@ -90,8 +90,7 @@ def parse_cluster_settings_file(file_path):
             result = json.loads(modified_string)
         except json.JSONDecodeError as e:
             print(
-                "Ошибка при попытке проанализировать файл настроек кластера <{file_path}>:",
-                e,
+                f"Ошибка при попытке проанализировать файл настроек кластера <{file_path}>: {e}..❌ "
             )
             exit(1)
 
