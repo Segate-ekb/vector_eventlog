@@ -74,6 +74,7 @@ define_log_collection_method() {
     if [ -n "${CH_BASE_NAME}" ]; then
         echo "Используется общая база данных. Конфигурация: singleBaseConfig.yaml..✅"
         CONFIG_FILE="singleBaseConfig.yaml"
+        python3 configure_vector.py --single-base
     elif [ -n "${BASE_LIST}" ]; then
         # Предполагаем, что BASE_LIST содержит YAML в виде строки
         echo "${BASE_LIST}" > /tmp/baseList.yaml

@@ -1,10 +1,5 @@
 version: '3.8'
 services:
-  clickhouse:
-    image: yandex/clickhouse-server
-    container_name: clickhouse
-    ports:
-      - "8123:8123"
   vector:
     image: segateekb/vector_eventlog:latest
     volumes:
@@ -19,6 +14,4 @@ services:
             ch_baseName: "erp26_ch"
       CH_USER: "default"
       CH_PASSWORD: ""
-    depends_on:
-      - clickhouse  
 

@@ -124,7 +124,7 @@ def create_csv_file(databases):
 
 
 def create_vector_config(
-    databases,
+    databases=[],
     template_path="/etc/vector/multiBaseConfig_template.yaml",
     output_path="/etc/vector/multiBaseConfig.yaml",
 ):
@@ -134,7 +134,8 @@ def create_vector_config(
 
     # Проверяем, есть ли нужный раздел и ключ
     if "sources" in config and "input_logs" in config["sources"]:
-        add_log_sources(config, databases)
+        if databases != []:
+            add_log_sources(config, databases)
         add_remove_after_secs(config)
     else:
         print("Ошибка в структуре шаблона конфигурации..❌")
@@ -162,6 +163,7 @@ def add_log_sources(config, databases):
         print("Ошибка в структуре шаблона конфигурации..❌")
         exit(1)
 
+
 def add_remove_after_secs(config):
     remove_after_secs = get_remove_after_secs()
     if remove_after_secs:
@@ -169,6 +171,7 @@ def add_remove_after_secs(config):
     else:
         print("Не удалось добавить информацию об удалении файлов..❌")
         exit(1)
+
 
 def parse_time_to_seconds(time_str):
     # Соответствие между единицами времени и их значениями в секундах
@@ -192,7 +195,6 @@ def parse_time_to_seconds(time_str):
     secs = int(value) * time_units[unit]
     print(f"Установлено удаление файлов старше {value}{unit} ({secs} секунд)..✅")
     return secs
-
 
 
 def get_remove_after_secs():
@@ -230,6 +232,11 @@ def main():
         action="store_true",
         help="Вывести информацию о базах данных в консоль",
     )
+    parser.add_argument(
+        "--single-base",
+        action="store_true",
+        help="Модифицировть конфигурацию для одной базы данных",
+    )
 
     args = parser.parse_args()
 
@@ -243,6 +250,12 @@ def main():
         enrich_databases(databases, cluster_database_list)
         create_csv_file(databases)
         create_vector_config(databases)
+    elif args.single_base:
+        create_vector_config(
+            [],
+            "/etc/vector/singleBaseConfig_template.yaml",
+            "/etc/vector/singleBaseConfig.yaml",
+        )
     else:
         parser.print_help()
 
